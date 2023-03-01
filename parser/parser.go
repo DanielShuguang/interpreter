@@ -5,6 +5,23 @@ import (
 	"monkey-compiler-study/ast"
 	"monkey-compiler-study/lexer"
 	"monkey-compiler-study/token"
+	"strconv"
+)
+
+const (
+	_ int = iota
+	LOWEST
+	EQUALS      // ==
+	LESSGREATER // > or <
+	SUM         // +
+	PRODUCT     // *
+	PREFIX      // -X or !X
+	CALL        // myFunction(X)
+)
+
+type (
+	prefixParseFn func() ast.Expression
+	infixParseFn  func(ast.Expression) ast.Expression
 )
 
 type Parser struct {
@@ -14,6 +31,9 @@ type Parser struct {
 	peekToken token.Token // 下一个字符的信息
 
 	errors []string // 检测到的语法错误列表
+
+	prefixParseFns map[token.TokenType]prefixParseFn // 前缀映射
+	infixParseFns  map[token.TokenType]infixParseFn  // 中缀映射
 }
 
 func New(l *lexer.Lexer) *Parser {
@@ -21,6 +41,12 @@ func New(l *lexer.Lexer) *Parser {
 		l:      l,
 		errors: []string{},
 	}
+
+	// 初始化前缀解析函数映射
+	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
+	// 注册解析函数
+	p.registerPrefix(token.IDENT, p.parseIdentifier)
+	p.registerPrefix(token.INT, p.parseIntegerLiteral)
 
 	// 读取两个词法单元，以设置 curToken 和 peekToken
 	p.nextToken()
@@ -46,7 +72,7 @@ func (p *Parser) nextToken() {
 	p.peekToken = p.l.NextToken()
 }
 
-func (p *Parser) ParserProgram() *ast.Program {
+func (p *Parser) ParseProgram() *ast.Program {
 	program := &ast.Program{}
 	program.Statements = []ast.Statement{}
 
@@ -70,7 +96,7 @@ func (p *Parser) parseStatement() ast.Statement {
 	case token.RETURN:
 		return p.parseReturnStatement() // 遇到 return 关键词，判断是否为正确的返回语句
 	default:
-		return nil
+		return p.parseExpressionStatement() // 以上情况都不是，则判断为表达式语句
 	}
 }
 
@@ -113,17 +139,51 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	return stmt
 }
 
-// 当前token是否为某一类型
+// 判断是否为正确的表达式
+func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
+	stmt := &ast.ExpressionStatement{
+		Token: p.curToken,
+	}
+	stmt.Expression = p.parseExpression(LOWEST)
+
+	// 有没有分号均可
+	if p.peekTokenIs(token.SEMICOLON) {
+		p.nextToken()
+	}
+
+	return stmt
+}
+
+func (p *Parser) parseExpression(precedence int) ast.Expression {
+	prefix := p.prefixParseFns[p.curToken.Type]
+	// 检查前缀位置是否有与 p.curToken.Type 关联的解析函数
+	if prefix == nil {
+		return nil
+	}
+	// 如果有则调用该解析函数
+	leftExp := prefix()
+
+	return leftExp
+}
+
+func (p *Parser) parseIdentifier() ast.Expression {
+	return &ast.Identifier{
+		Token: p.curToken,
+		Value: p.curToken.Literal,
+	}
+}
+
+// 当前 token 是否为某一类型
 func (p *Parser) curTokenIs(t token.TokenType) bool {
 	return p.curToken.Type == t
 }
 
-// 下一个token是否为某一类型
+// 下一个 token 是否为某一类型
 func (p *Parser) peekTokenIs(t token.TokenType) bool {
 	return p.peekToken.Type == t
 }
 
-// 下一个token是否为期望类型
+// 下一个 token 是否为期望类型
 func (p *Parser) expectPeek(t token.TokenType) bool {
 	if p.peekTokenIs(t) {
 		p.nextToken()
@@ -133,4 +193,29 @@ func (p *Parser) expectPeek(t token.TokenType) bool {
 		p.peekError(t)
 		return false
 	}
+}
+
+func (p *Parser) registerPrefix(tokenType token.TokenType, fn prefixParseFn) {
+	p.prefixParseFns[tokenType] = fn
+}
+
+func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
+	p.infixParseFns[tokenType] = fn
+}
+
+// 将 curToken 的字面量转换为 int64
+func (p *Parser) parseIntegerLiteral() ast.Expression {
+	lit := &ast.IntegerLiteral{Token: p.curToken}
+
+	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
+	if err != nil {
+		msg := fmt.Sprintf("could not parse %q as integer",
+			p.curToken.Literal)
+		p.errors = append(p.errors, msg)
+		return nil
+	}
+
+	lit.Value = value
+
+	return lit
 }
