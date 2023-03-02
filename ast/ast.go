@@ -108,8 +108,8 @@ func (rs *ReturnStatement) String() string {
 }
 
 type ExpressionStatement struct {
-	Token token.Token // 该表达式中的第一个词法单元
-	Expression
+	Token      token.Token // 该表达式中的第一个词法单元
+	Expression Expression
 }
 
 func (es *ExpressionStatement) statementNode() {}
@@ -134,4 +134,25 @@ func (il *IntegerLiteral) TokenLiteral() string {
 }
 func (il *IntegerLiteral) String() string {
 	return il.Token.Literal
+}
+
+type PrefixExpression struct {
+	Token    token.Token
+	Operator string     // - 或 !
+	Right    Expression // 包含运算符右边的表达式
+}
+
+func (pe *PrefixExpression) expressionNode() {}
+func (pe *PrefixExpression) TokenLiteral() string {
+	return pe.Token.Literal
+}
+func (pe *PrefixExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("(")
+	out.WriteString(pe.Operator)
+	out.WriteString(pe.Right.String())
+	out.WriteString(")")
+
+	return out.String()
 }

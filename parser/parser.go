@@ -47,6 +47,8 @@ func New(l *lexer.Lexer) *Parser {
 	// 注册解析函数
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
 	p.registerPrefix(token.INT, p.parseIntegerLiteral)
+	p.registerPrefix(token.BANG, p.parsePrefixExpression)
+	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
 
 	// 读取两个词法单元，以设置 curToken 和 peekToken
 	p.nextToken()
@@ -158,6 +160,7 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 	prefix := p.prefixParseFns[p.curToken.Type]
 	// 检查前缀位置是否有与 p.curToken.Type 关联的解析函数
 	if prefix == nil {
+		p.noPrefixParseFnError(p.curToken.Type)
 		return nil
 	}
 	// 如果有则调用该解析函数
@@ -218,4 +221,23 @@ func (p *Parser) parseIntegerLiteral() ast.Expression {
 	lit.Value = value
 
 	return lit
+}
+
+func (p *Parser) parsePrefixExpression() ast.Expression {
+	expression := &ast.PrefixExpression{
+		Token:    p.curToken,
+		Operator: p.curToken.Literal,
+	}
+	// 为了正确解析 -5 这样的前缀表达式，
+	// 需要前移词法单元，并再次调用解析函数
+	p.nextToken()
+	expression.Right = p.parseExpression(PREFIX)
+
+	return expression
+}
+
+// 将格式化的错误消息添加到语法分析器的 errors 中
+func (p *Parser) noPrefixParseFnError(t token.TokenType) {
+	msg := fmt.Sprintf("no prefix parse function for %s found", t)
+	p.errors = append(p.errors, msg)
 }
