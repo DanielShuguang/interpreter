@@ -780,6 +780,7 @@ func TestParsingIndexExpressions(t *testing.T) {
 
 func TestParsingHashLiteralsStringKeys(t *testing.T) {
 	input := `{"one": 1, "two": 2, "three": 3}`
+
 	l := lexer.New(input)
 	p := New(l)
 	program := p.ParseProgram()
