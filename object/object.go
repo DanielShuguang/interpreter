@@ -98,9 +98,9 @@ func (e *Error) Inspect() string {
 }
 
 type Function struct {
-	Paramters []*ast.Identifier
-	Body      *ast.BlockStatement
-	Env       *Environment
+	Parameters []*ast.Identifier
+	Body       *ast.BlockStatement
+	Env        *Environment
 }
 
 func (f *Function) Type() ObjectType {
@@ -111,7 +111,7 @@ func (f *Function) Inspect() string {
 	var out bytes.Buffer
 
 	params := []string{}
-	for _, p := range f.Paramters {
+	for _, p := range f.Parameters {
 		params = append(params, p.String())
 	}
 

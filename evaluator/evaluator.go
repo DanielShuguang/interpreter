@@ -76,7 +76,7 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		params := node.Parameters
 		body := node.Body
 		return &object.Function{
-			Paramters: params, Env: env, Body: body,
+			Parameters: params, Env: env, Body: body,
 		}
 
 	case *ast.CallExpression:
@@ -139,7 +139,7 @@ func extendsFunctionEnv(
 ) *object.Environment {
 	env := object.NewEnclosedEnvironment(fn.Env)
 
-	for paramIdx, param := range fn.Paramters {
+	for paramIdx, param := range fn.Parameters {
 		env.Set(param.Value, args[paramIdx])
 	}
 
