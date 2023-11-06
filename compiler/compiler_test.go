@@ -44,7 +44,7 @@ func runCompilerTests(t *testing.T, tests []compilerTestCase) {
 			t.Fatalf("compiler error: %s", err)
 		}
 
-		bytecode := compiler.ByteCode()
+		bytecode := compiler.Bytecode()
 
 		err = testInstructions(tt.expectedInstructions, bytecode.Instructions)
 		if err != nil {
