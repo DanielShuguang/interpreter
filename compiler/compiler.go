@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"fmt"
 	"monkey-compiler-study/ast"
 	"monkey-compiler-study/code"
 	"monkey-compiler-study/object"
@@ -41,6 +42,13 @@ func (c *Compiler) Compile(node ast.Node) error {
 		err = c.Compile(node.Right)
 		if err != nil {
 			return err
+		}
+
+		switch node.Operator {
+		case "+":
+			c.emit(code.OpAdd)
+		default:
+			return fmt.Errorf("unknow operator %s", node.Operator)
 		}
 	case *ast.IntegerLiteral:
 		integer := &object.Integer{Value: node.Value}
